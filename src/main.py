@@ -1,11 +1,15 @@
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from starlette.responses import FileResponse
 import uvicorn
 
 app = FastAPI()
 
-@app.get("/ui/")
-def get_ui():
-    return "hi"
+app.mount("/static", StaticFiles(directory="ui/build/static"), name="static")
+
+@app.get("/")
+async def ui():
+    return FileResponse("ui/build/index.html")
 
 
 if __name__ == "__main__":

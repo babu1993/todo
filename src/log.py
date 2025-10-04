@@ -14,6 +14,7 @@ class JsonFormatter(logging.Formatter):
             "funcName": record.funcName,
             "process": record.process,
             "thread": record.thread,
+            "corr_id": record.corr_id
             # Add any other desired attributes from record.__dict__
         }
         return json.dumps(log_record)

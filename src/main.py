@@ -1,4 +1,6 @@
-from fastapi import FastAPI, Request, Response
+import json
+
+from fastapi import FastAPI, Request, Response, BackgroundTasks
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import FileResponse
 import uvicorn
@@ -38,13 +40,14 @@ async def token_verifier(request: Request, call_next):
     else:
         return Response(status_code=HTTPStatus.BAD_REQUEST)
     request.state.subject = claimset['sub']
+    request.state.corr = claimset['jti']
     response = await call_next(request)
     return response
 
 @api.get("/tasks")
 async def get_tasks(request: Request):
     user_id = request.state.subject
-    logger.info(f"Get task received for user: {user_id}")
+    logger.info(f"Get task received for user: {user_id}", extra={"corr_id": request.state.corr})
     curr = conn.execute(f"select * from tasks where user_id='{user_id}'")
     rows = curr.fetchall()
     tasks = [{"id": row["id"], "description": row["description"],
@@ -52,6 +55,19 @@ async def get_tasks(request: Request):
               "task_name": row["task_name"]} for row in rows]
     return tasks
 
+def reassign_tasks_job(task_id, user_id, new_user_id, corr):
+    con = sqlite3.connect('todo.db')
+    con.execute(f"update tasks set user_id='' where id={task_id}")
+    logger.info(f"Error occurred while reassigning task: {task_id} from user: {user_id} to new_user:{new_user_id}",
+                extra={"corr_id": corr})
+
+@api.patch("/tasks/{task_id}/reassign")
+async def reassign_tasks(task_id: str, new_user_id: str, request: Request, back: BackgroundTasks):
+    user_id = request.state.subject
+    logger.info(f"Reassign request received for task:{task_id} from user: {user_id} to new_user:{new_user_id}",
+                extra={"corr_id": request.state.corr})
+    back.add_task(reassign_tasks_job, task_id, user_id, new_user_id, request.state.corr)
+    return Response(status_code=HTTPStatus.ACCEPTED, content=json.dumps({}))
 
 app.mount("/api", api)
 

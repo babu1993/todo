@@ -11,7 +11,7 @@ import {
 } from '@mantine/core';
 import { useState, useRef, useEffect } from 'react';
 import { MoonStars, Sun, Trash } from 'tabler-icons-react';
-import {AuthenticationGuard} from "@trimble-oss/trimble-id-react";
+import { AuthenticationGuard } from '@trimblecloud/react-tid';
 import {
 	MantineProvider,
 	ColorSchemeProvider,

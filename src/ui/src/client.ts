@@ -1,4 +1,4 @@
-import { TIDClient } from '@trimble-oss/trimble-id-react'
+import { TIDClient } from '@trimblecloud/react-tid';
 const tidClient = new TIDClient({
   config: {
             configurationEndpoint: "https://stage.id.trimblecloud.com/.well-known/openid-configuration",

@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
-import { TIDProvider } from '@trimble-oss/trimble-id-react'
+import { TIDProvider } from '@trimblecloud/react-tid';
 import tidClient from './client.ts'
 
 const root = ReactDOM.createRoot(document.getElementById('root'));

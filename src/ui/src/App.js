@@ -7,10 +7,11 @@ import {
 	TextInput,
 	Group,
 	Card,
-	ActionIcon
+	ActionIcon,
+	Stack
 } from '@mantine/core';
 import { useState, useRef, useEffect } from 'react';
-import { MoonStars, Sun, Trash } from 'tabler-icons-react';
+import { MoonStars, Sun, Trash, UserPlus} from 'tabler-icons-react';
 import { AuthenticationGuard } from '@trimblecloud/react-tid';
 import {
 	MantineProvider,
@@ -156,6 +157,7 @@ export default function App() {
 										<Card withBorder key={index} mt={'sm'}>
 											<Group position={'apart'}>
 												<Text weight={'bold'}>{task.title}</Text>
+												<Stack align="center" justify="center">
 												<ActionIcon
 													onClick={() => {
 														deleteTask(index);
@@ -164,6 +166,15 @@ export default function App() {
 													variant={'transparent'}>
 													<Trash />
 												</ActionIcon>
+                                                <ActionIcon
+													onClick={() => {
+														deleteTask(index);
+													}}
+													color={'red'}
+													variant={'transparent'}>
+													<UserPlus />
+												</ActionIcon>
+												</Stack>
 											</Group>
 											<Text color={'dimmed'} size={'md'} mt={'sm'}>
 												{task.summary

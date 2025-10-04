@@ -3,16 +3,15 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
-import {
-	MantineProvider,
-	ColorSchemeProvider,
-	ColorScheme,
-} from '@mantine/core';
+import { TIDProvider } from '@trimble-oss/trimble-id-react'
+import tidClient from './client.ts'
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <App />
+    <TIDProvider tidClient={tidClient}>
+        <App/>
+    </TIDProvider>
   </React.StrictMode>
 );
 

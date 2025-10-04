@@ -1,4 +1,3 @@
-
 import {
 	Button,
 	Container,
@@ -8,25 +7,20 @@ import {
 	TextInput,
 	Group,
 	Card,
-	ActionIcon,
-	Code,
+	ActionIcon
 } from '@mantine/core';
 import { useState, useRef, useEffect } from 'react';
 import { MoonStars, Sun, Trash } from 'tabler-icons-react';
-
+import {AuthenticationGuard} from "@trimble-oss/trimble-id-react";
 import {
 	MantineProvider,
 	ColorSchemeProvider,
-	ColorScheme,
 } from '@mantine/core';
-import { useColorScheme } from '@mantine/hooks';
 import { useHotkeys, useLocalStorage } from '@mantine/hooks';
 
 export default function App() {
 	const [tasks, setTasks] = useState([]);
 	const [opened, setOpened] = useState(false);
-
-	const preferredColorScheme = useColorScheme();
 	const [colorScheme, setColorScheme] = useLocalStorage({
 		key: 'mantine-color-scheme',
 		defaultValue: 'light',
@@ -87,7 +81,8 @@ export default function App() {
 	}, []);
 
 	return (
-		<ColorSchemeProvider
+	<AuthenticationGuard renderComponent={
+	<ColorSchemeProvider
 			colorScheme={colorScheme}
 			toggleColorScheme={toggleColorScheme}>
 			<MantineProvider
@@ -196,5 +191,6 @@ export default function App() {
 				</div>
 			</MantineProvider>
 		</ColorSchemeProvider>
+	}/>
 	);
 }

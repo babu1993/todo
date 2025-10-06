@@ -10,3 +10,11 @@ dependencies = [
     "trimble-id>=0.1.1",
     "uvicorn[standard]>=0.37.0",
 ]
+
+[tool.uv.sources]
+helphub = { path = "../../helphubp/helphub_cli/dist/helphub-0.1.0-py3-none-any.whl" }
+
+[dependency-groups]
+dev = [
+    "helphub",
+]

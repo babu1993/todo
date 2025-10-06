@@ -47,23 +47,28 @@ async def token_verifier(request: Request, call_next):
 @api.get("/tasks")
 async def get_tasks(request: Request):
     user_id = request.state.subject
+    # [_ID=GetTasksLog]
     logger.info(f"Get task received for user: {user_id}", extra={"corr_id": request.state.corr})
     curr = conn.execute(f"select * from tasks where user_id='{user_id}'")
     rows = curr.fetchall()
     tasks = [{"id": row["id"], "description": row["description"],
               "status": row["status"], "data": row["date_added"],
               "task_name": row["task_name"]} for row in rows]
+    #[_ID=GetTasksSuccess]
+    logger.info(f"Successfully retrieved tasks for user:{user_id}", extra={"corr_id": request.state.corr})
     return tasks
 
 def reassign_tasks_job(task_id, user_id, new_user_id, corr):
     con = sqlite3.connect('todo.db')
     con.execute(f"update tasks set user_id='' where id={task_id}")
+    #[_ID=AssignTaskError]
     logger.info(f"Error occurred while reassigning task: {task_id} from user: {user_id} to new_user:{new_user_id}",
                 extra={"corr_id": corr})
 
 @api.patch("/tasks/{task_id}/reassign")
 async def reassign_tasks(task_id: str, new_user_id: str, request: Request, back: BackgroundTasks):
     user_id = request.state.subject
+    #[_ID=ReassignRequest]
     logger.info(f"Reassign request received for task:{task_id} from user: {user_id} to new_user:{new_user_id}",
                 extra={"corr_id": request.state.corr})
     back.add_task(reassign_tasks_job, task_id, user_id, new_user_id, request.state.corr)

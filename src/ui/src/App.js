@@ -22,6 +22,8 @@ import { useHotkeys, useLocalStorage } from '@mantine/hooks';
 export default function App() {
 	const [tasks, setTasks] = useState([]);
 	const [opened, setOpened] = useState(false);
+	const [uopened, setUopened] = useState(false);
+	const [currentTask, setCurrentTask] = useState({})
 	const { getAccessTokenSilently } = useAuth();
 	const [colorScheme, setColorScheme] = useLocalStorage({
 		key: 'mantine-color-scheme',
@@ -35,6 +37,7 @@ export default function App() {
 
 	const taskTitle = useRef('');
 	const taskSummary = useRef('');
+	const newUserId = useRef('');
 
 	async function createTask() {
 	    const msg = {
@@ -76,7 +79,41 @@ export default function App() {
 		]);
 	}
 
-	function deleteTask(index) {
+	async function assignTask(){
+        var clonedTasks = [...tasks];
+
+		clonedTasks.splice(currentTask.index, 1);
+
+		setTasks(clonedTasks);
+
+		saveTasks([...clonedTasks]);
+		const token = await getAccessTokenSilently();
+	    const currentDomain = window.location.origin;
+	    let data;
+	    try{
+            const response = await fetch(`${currentDomain}/api/tasks/${currentTask.id}/reassign?new_user_id=${newUserId.current.value}`, {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`,
+              }
+            }
+            );
+
+          if (!response.ok) {
+            console.error("Error sending message:", response.statusText);
+          }
+          else{
+            data = await response.json();
+            console.log(data);
+          }
+        }
+        catch(e){
+          console.error("Error in fetch:", e);
+        }
+	}
+
+	async function deleteTask(index, task_id) {
 		var clonedTasks = [...tasks];
 
 		clonedTasks.splice(index, 1);
@@ -84,6 +121,30 @@ export default function App() {
 		setTasks(clonedTasks);
 
 		saveTasks([...clonedTasks]);
+        const token = await getAccessTokenSilently();
+	    const currentDomain = window.location.origin;
+	    let data;
+	    try{
+            const response = await fetch(`${currentDomain}/api/tasks/${task_id}`, {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`,
+              }
+            }
+            );
+
+          if (!response.ok) {
+            console.error("Error sending message:", response.statusText);
+          }
+          else{
+            data = await response.json();
+            console.log(data);
+          }
+        }
+        catch(e){
+          console.error("Error in fetch:", e);
+        }
 	}
 
 	async function loadTasks() {
@@ -134,6 +195,39 @@ export default function App() {
 				withGlobalStyles
 				withNormalizeCSS>
 				<div className='App'>
+				    <Modal
+						opened={uopened}
+						size={'md'}
+						title={'Assign Task'}
+						withCloseButton={false}
+						onClose={() => {
+							setUopened(false);
+						}}
+						centered>
+                            <TextInput
+							mt={'md'}
+							ref={newUserId}
+							placeholder={'User Id'}
+							required
+							label={'Title'}
+							/>
+                        <Group mt={'md'} position={'apart'}>
+							<Button
+								onClick={() => {
+									setUopened(false);
+								}}
+								variant={'subtle'}>
+								Cancel
+							</Button>
+							<Button
+								onClick={async () => {
+                                    await assignTask();
+									setUopened(false);
+								}}>
+								Assign
+							</Button>
+						</Group>
+					</Modal>
 					<Modal
 						opened={opened}
 						size={'md'}
@@ -202,16 +296,20 @@ export default function App() {
 												<Text weight={'bold'}>{task.task_name}</Text>
 												<Stack align="center" justify="center">
 												<ActionIcon
-													onClick={() => {
-														deleteTask(index);
+													onClick={async () => {
+														await deleteTask(index, task.id);
 													}}
 													color={'red'}
 													variant={'transparent'}>
 													<Trash />
 												</ActionIcon>
                                                 <ActionIcon
-													onClick={() => {
-														deleteTask(index);
+													onClick={async () => {
+													    setCurrentTask({
+													        id: task.id,
+													        index: index
+													    })
+													    setUopened(true);
 													}}
 													color={'red'}
 													variant={'transparent'}>

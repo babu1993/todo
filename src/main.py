@@ -59,8 +59,7 @@ async def token_verifier(request: Request, call_next):
 async def create_tasks(request: Request, task:Task):
     user_id = request.state.subject
     task.user_id = user_id
-    insert_smt = f"INSERT INTO tasks (id, task_name, description, date_added, user_id) VALUES ({task.id}, '{task.task_name}', '{task.description}', '{datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M:%S")}', '{task.user_id}')"
-    print(insert_smt)
+    insert_smt = f"INSERT INTO tasks (id, task_name, description, date_added, user_id) VALUES ('{task.id}', '{task.task_name}', '{task.description}', '{datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M:%S")}', '{task.user_id}')"
     try:
         conn.execute(insert_smt)
         conn.commit()
@@ -84,11 +83,15 @@ async def get_tasks(request: Request):
     return tasks
 
 def reassign_tasks_job(task_id, user_id, new_user_id, corr):
-    con = sqlite3.connect('todo.db')
-    con.execute(f"update tasks set user_id='' where id={task_id}")
-    #[_ID=AssignTaskError]
-    logger.info(f"Error occurred while reassigning task: {task_id} from user: {user_id} to new_user:{new_user_id}",
-                extra={"corr_id": corr})
+    try:
+        con = sqlite3.connect('todo.db')
+        con.execute(f"update tasks set user_id='' where id={task_id}")
+        con.commit()
+        raise Exception()
+    except Exception:
+        # [_ID=AssignTaskError]
+        logger.info(f"Error occurred while reassigning task: {task_id} from user: {user_id} to new_user:{new_user_id}",
+                    extra={"corr_id": corr})
 
 @api.patch("/tasks/{task_id}/reassign")
 async def reassign_tasks(task_id: str, new_user_id: str, request: Request, back: BackgroundTasks):
@@ -99,12 +102,26 @@ async def reassign_tasks(task_id: str, new_user_id: str, request: Request, back:
     back.add_task(reassign_tasks_job, task_id, user_id, new_user_id, request.state.corr)
     return Response(status_code=HTTPStatus.ACCEPTED, content=json.dumps({}))
 
+@api.delete("/tasks/{task_id}")
+async def delete_task(task_id:str, request:Request):
+    user_id = request.state.subject
+    delete_smt = f"DELETE FROM tasks where id='{task_id}'"
+    logger.info(f"Task Delete requested for task:{task_id} by user:{user_id}")
+    try:
+        conn.execute(delete_smt)
+        conn.commit()
+    except Exception as e:
+        logger.info(e)
+        return Response(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, content=json.dumps({}))
+    logger.info(f"Task Deleted:{task_id}")
+    return Response(status_code=HTTPStatus.OK)
+
 app.mount("/api", api)
 
 if __name__ == "__main__":
     conn.execute("DROP TABLE IF EXISTS tasks")
     conn.execute('''CREATE TABLE tasks (
-    id INTEGER PRIMARY KEY,
+    id TEXT PRIMARY KEY,
     task_name TEXT NOT NULL,
     description TEXT,
     status TEXT DEFAULT 'pending',
@@ -112,7 +129,7 @@ if __name__ == "__main__":
     user_id TEXT
 );''')
     for i in range(1, 5):
-        insert = f"INSERT INTO tasks (id, task_name, description, date_added, user_id) VALUES ({i}, 'TODO_{i}', 'd_{i}', '{datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M:%S")}', '1b492058-2c9b-4593-817d-6b48ac4f1db9')"
+        insert = f"INSERT INTO tasks (id, task_name, description, date_added, user_id) VALUES ('{i}', 'TODO_{i}', 'd_{i}', '{datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M:%S")}', '1b492058-2c9b-4593-817d-6b48ac4f1db9')"
         conn.execute(insert)
     conn.commit()
     uvicorn.run("main:app", host="0.0.0.0",

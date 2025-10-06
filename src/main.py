@@ -9,12 +9,23 @@ from datetime import datetime, UTC
 from log import setup_json_logger
 from trimble.id import OpenIdEndpointProvider, ValidatedClaimsetProvider, OpenIdKeySetProvider
 from http import HTTPStatus
+from pydantic import BaseModel, Field
+from uuid import uuid4
+from datetime import date
 conn = sqlite3.connect('todo.db')
 conn.row_factory = sqlite3.Row
 app = FastAPI()
 
 logger = setup_json_logger("./log_file.json", 'todo')
 app.mount("/static", StaticFiles(directory="ui/build/static"), name="static")
+
+class Task(BaseModel):
+    id:str =  Field(default_factory=uuid4)
+    task_name: str
+    description:str = Field(default="")
+    status:str = Field(default="pending")
+    date_added:date = Field(default_factory=date.today)
+    user_id:str = Field(default="")
 
 @app.get("/")
 async def ui():
@@ -43,6 +54,20 @@ async def token_verifier(request: Request, call_next):
     request.state.corr = claimset['jti']
     response = await call_next(request)
     return response
+
+@api.post("/tasks")
+async def create_tasks(request: Request, task:Task):
+    user_id = request.state.subject
+    task.user_id = user_id
+    insert_smt = f"INSERT INTO tasks (id, task_name, description, date_added, user_id) VALUES ({task.id}, '{task.task_name}', '{task.description}', '{datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M:%S")}', '{task.user_id}')"
+    print(insert_smt)
+    try:
+        conn.execute(insert_smt)
+        conn.commit()
+    except Exception as e:
+        logger.info(e)
+        return Response(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, content=json.dumps({}))
+    return Response(status_code=HTTPStatus.OK, content=json.dumps({}))
 
 @api.get("/tasks")
 async def get_tasks(request: Request):

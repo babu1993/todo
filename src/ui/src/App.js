@@ -12,7 +12,7 @@ import {
 } from '@mantine/core';
 import { useState, useRef, useEffect } from 'react';
 import { MoonStars, Sun, Trash, UserPlus} from 'tabler-icons-react';
-import { AuthenticationGuard } from '@trimblecloud/react-tid';
+import { AuthenticationGuard, useAuth} from '@trimblecloud/react-tid';
 import {
 	MantineProvider,
 	ColorSchemeProvider,
@@ -22,6 +22,7 @@ import { useHotkeys, useLocalStorage } from '@mantine/hooks';
 export default function App() {
 	const [tasks, setTasks] = useState([]);
 	const [opened, setOpened] = useState(false);
+	const { getAccessTokenSilently } = useAuth();
 	const [colorScheme, setColorScheme] = useLocalStorage({
 		key: 'mantine-color-scheme',
 		defaultValue: 'light',
@@ -35,21 +36,43 @@ export default function App() {
 	const taskTitle = useRef('');
 	const taskSummary = useRef('');
 
-	function createTask() {
+	async function createTask() {
+	    const msg = {
+				task_name: taskTitle.current.value,
+				description: taskSummary.current.value,
+			}
 		setTasks([
 			...tasks,
-			{
-				title: taskTitle.current.value,
-				summary: taskSummary.current.value,
-			},
+			msg
 		]);
+		const token = await getAccessTokenSilently();
+	    const currentDomain = window.location.origin;
+	    let data;
+	    try{
+            const response = await fetch(`${currentDomain}/api/tasks`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`,
+              },
+            body: JSON.stringify(msg),
+            }
+            );
 
+          if (!response.ok) {
+            console.error("Error sending message:", response.statusText);
+          }
+          else{
+            data = await response.json();
+            console.log(data);
+          }
+        }
+        catch(e){
+          console.error("Error in fetch:", e);
+        }
 		saveTasks([
 			...tasks,
-			{
-				title: taskTitle.current.value,
-				summary: taskSummary.current.value,
-			},
+			msg
 		]);
 	}
 
@@ -63,14 +86,32 @@ export default function App() {
 		saveTasks([...clonedTasks]);
 	}
 
-	function loadTasks() {
-		let loadedTasks = localStorage.getItem('tasks');
-
-		let tasks = JSON.parse(loadedTasks);
-
-		if (tasks) {
-			setTasks(tasks);
-		}
+	async function loadTasks() {
+	    const token = await getAccessTokenSilently();
+	    const currentDomain = window.location.origin;
+	    let data;
+	    try{
+        const response = await fetch(`${currentDomain}/api/tasks`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+            }
+          });
+          if (!response.ok) {
+            console.error("Error sending message:", response.statusText);
+          }
+          else{
+            data = await response.json();
+            console.log(data)
+          }
+        }
+        catch(e){
+          console.error("Error in fetch:", e);
+        }
+        if (data) {
+            setTasks(data);
+        }
 	}
 
 	function saveTasks(tasks) {
@@ -78,7 +119,9 @@ export default function App() {
 	}
 
 	useEffect(() => {
-		loadTasks();
+	    (async () => {
+            await loadTasks();
+	    })();
 	}, []);
 
 	return (
@@ -122,8 +165,8 @@ export default function App() {
 								Cancel
 							</Button>
 							<Button
-								onClick={() => {
-									createTask();
+								onClick={async () => {
+									await createTask();
 									setOpened(false);
 								}}>
 								Create Task
@@ -152,11 +195,11 @@ export default function App() {
 						</Group>
 						{tasks.length > 0 ? (
 							tasks.map((task, index) => {
-								if (task.title) {
+								if (task.task_name) {
 									return (
 										<Card withBorder key={index} mt={'sm'}>
 											<Group position={'apart'}>
-												<Text weight={'bold'}>{task.title}</Text>
+												<Text weight={'bold'}>{task.task_name}</Text>
 												<Stack align="center" justify="center">
 												<ActionIcon
 													onClick={() => {
@@ -177,8 +220,8 @@ export default function App() {
 												</Stack>
 											</Group>
 											<Text color={'dimmed'} size={'md'} mt={'sm'}>
-												{task.summary
-													? task.summary
+												{task.description
+													? task.description
 													: 'No summary was provided for this task'}
 											</Text>
 										</Card>

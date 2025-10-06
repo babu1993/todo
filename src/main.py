@@ -1,23 +1,23 @@
 import json
+import sqlite3
+from datetime import date
+from datetime import datetime, UTC
+from http import HTTPStatus
+from uuid import uuid4
+import re
 
+import uvicorn
 from fastapi import FastAPI, Request, Response, BackgroundTasks
 from fastapi.staticfiles import StaticFiles
-from starlette.responses import FileResponse
-import uvicorn
-import sqlite3
-from datetime import datetime, UTC
 from log import setup_json_logger
-from trimble.id import OpenIdEndpointProvider, ValidatedClaimsetProvider, OpenIdKeySetProvider
-from http import HTTPStatus
 from pydantic import BaseModel, Field
-from uuid import uuid4
-from datetime import date
+from starlette.responses import FileResponse
+from trimble.id import OpenIdEndpointProvider, ValidatedClaimsetProvider, OpenIdKeySetProvider
+from fastmcp import FastMCP
+
 conn = sqlite3.connect('todo.db')
 conn.row_factory = sqlite3.Row
-app = FastAPI()
-
-logger = setup_json_logger("./log_file.json", 'todo')
-app.mount("/static", StaticFiles(directory="ui/build/static"), name="static")
+logger = setup_json_logger("./log_file.log", 'todo')
 
 class Task(BaseModel):
     id:str =  Field(default_factory=uuid4)
@@ -27,11 +27,35 @@ class Task(BaseModel):
     date_added:date = Field(default_factory=date.today)
     user_id:str = Field(default="")
 
-@app.get("/")
-async def ui():
-    return FileResponse("ui/build/index.html")
+mcp = FastMCP()
+@mcp.tool()
+def query_logs(query: str="", _from: str="", to: str="", corr_id: str=""):
+    """Adds two number"""
+    response_logs = []
+    with open("log_file.log", "r") as log:
+        for line in log:
+            data = json.loads(line)
+            if corr_id and data['corr_id'] == corr_id:
+                response_logs.append(data)
+            if query:
+                if re.match(query, data["message"]):
+                    response_logs.append(data)
+        return response_logs
 
-api = FastAPI(root_path="/api")
+@mcp.tool()
+def reassign_task(task_id: str, from_user_id: str, new_user_id: str):
+    update_statement = f"update tasks set user_id='{new_user_id}' where id='{task_id}'"
+    logger.info(f"from:{from_user_id} to:{new_user_id} taskid:{task_id}")
+    try:
+        conn.execute(update_statement)
+        conn.commit()
+    except Exception:
+        logger.info("Reassign error")
+    return "True"
+
+mcp_http_app = mcp.http_app(path="/mcp")
+api = FastAPI(root_path="/api", lifespan=mcp_http_app.lifespan)
+api.mount("/tools", mcp_http_app)
 
 @api.middleware("http")
 async def token_verifier(request: Request, call_next):
@@ -106,17 +130,27 @@ async def reassign_tasks(task_id: str, new_user_id: str, request: Request, back:
 async def delete_task(task_id:str, request:Request):
     user_id = request.state.subject
     delete_smt = f"DELETE FROM tasks where id='{task_id}'"
-    logger.info(f"Task Delete requested for task:{task_id} by user:{user_id}")
+    logger.info(f"Task Delete requested for task:{task_id} by user:{user_id}", extra={"corr_id": request.state.corr})
     try:
         conn.execute(delete_smt)
         conn.commit()
     except Exception as e:
         logger.info(e)
         return Response(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, content=json.dumps({}))
-    logger.info(f"Task Deleted:{task_id}")
+    logger.info(f"Task Deleted:{task_id}", extra={"corr_id": request.state.corr})
     return Response(status_code=HTTPStatus.OK)
 
+# Main APP
+app = FastAPI(lifespan=mcp_http_app.lifespan)
+
+app.mount("/static", StaticFiles(directory="ui/build/static"), name="static")
+@app.get("/")
+async def ui():
+    return FileResponse("ui/build/index.html")
+
 app.mount("/api", api)
+
+
 
 if __name__ == "__main__":
     conn.execute("DROP TABLE IF EXISTS tasks")

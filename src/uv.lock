@@ -516,7 +516,7 @@ dependencies = [
     { name = "pyyaml" },
 ]
 wheels = [
-    { filename = "helphub-0.1.0-py3-none-any.whl", hash = "sha256:843d2b7860769aa5e46c13a6a6c13a67ccd768085c68fb0b97b2ce81a26cfb0f" },
+    { filename = "helphub-0.1.0-py3-none-any.whl", hash = "sha256:79f7de46ad3f91bcf6ed91b75472fe099db272fb3c386d447820a1452aa5cc14" },
 ]
 
 [package.metadata]
@@ -1442,6 +1442,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "fastapi" },
     { name = "fastmcp" },
+    { name = "helphub" },
     { name = "trimble-id" },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -1455,6 +1456,7 @@ dev = [
 requires-dist = [
     { name = "fastapi", specifier = ">=0.118.0" },
     { name = "fastmcp", specifier = ">=2.12.4" },
+    { name = "helphub", path = "../../helphubp/helphub_cli/dist/helphub-0.1.0-py3-none-any.whl" },
     { name = "trimble-id", specifier = ">=0.1.1" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.37.0" },
 ]

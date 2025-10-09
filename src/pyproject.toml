@@ -7,15 +7,14 @@ requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.118.0",
     "fastmcp>=2.12.4",
-    "helphub",
     "trimble-id>=0.1.1",
     "uvicorn[standard]>=0.37.0",
 ]
-
-[tool.uv.sources]
-helphub = { path = "../../helphubp/helphub_cli/dist/helphub-0.1.0-py3-none-any.whl" }
 
 [dependency-groups]
 dev = [
     "helphub",
 ]
+
+[tool.uv.sources]
+helphub = { path = "../../helphubp/helphub_cli/dist/helphub-0.1.0-py3-none-any.whl" }

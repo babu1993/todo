@@ -30,7 +30,7 @@ class Task(BaseModel):
 mcp = FastMCP()
 @mcp.tool()
 def query_logs(query: str="", _from: str="", to: str="", corr_id: str=""):
-    """Adds two number"""
+    """Fetches logs"""
     response_logs = []
     with open("log_file.log", "r") as log:
         for line in log:
@@ -95,16 +95,18 @@ async def create_tasks(request: Request, task:Task):
 @api.get("/tasks")
 async def get_tasks(request: Request):
     user_id = request.state.subject
-    # [_ID=GetTasksLog]
-    logger.info(f"Get task received for user: {user_id}", extra={"corr_id": request.state.corr})
-    curr = conn.execute(f"select * from tasks where user_id='{user_id}'")
-    rows = curr.fetchall()
-    tasks = [{"id": row["id"], "description": row["description"],
-              "status": row["status"], "data": row["date_added"],
-              "task_name": row["task_name"]} for row in rows]
-    #[_ID=GetTasksSuccess]
-    logger.info(f"Successfully retrieved tasks for user:{user_id}", extra={"corr_id": request.state.corr})
-    return tasks
+    try:
+        logger.info(f"Get task received for user: {user_id}", extra={"corr_id": request.state.corr})
+        curr = conn.execute(f"select * from tasks where user_id='{user_id}'")
+        rows = curr.fetchall()
+        tasks = [{"id": row["id"], "description": row["description"],
+                  "status": row["status"], "data": row["date_added"],
+                  "task_name": row["task_name"]} for row in rows]
+        logger.info(f"Successfully retrieved tasks for user:{user_id}", extra={"corr_id": request.state.corr})
+        return tasks
+    except Exception as e:
+        # [_ID=GetTasksLogError]
+        logger.info(f"Error in get task for user: {user_id}", extra={"corr_id": request.state.corr})
 
 def reassign_tasks_job(task_id, user_id, new_user_id, corr):
     try:
